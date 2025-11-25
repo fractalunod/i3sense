@@ -1,0 +1,407 @@
+!
+! ----- general mechanics x water-transport model -----
+! 
+! ----- norway spruce
+!
+dens_k=430		!basic density  - kg/m3
+dens_0=480		!oven-dry dens. - kg/m3
+dens_subst=1530		!density of cell wall - kg/m3
+dens_wat=1000		!dens. of water - kg/m3
+!
+alp_r_t=3.6		!total shrinkage - %
+alp_t_t=8
+alp_l_t=0.5
+!
+i_c_w=10		!initial MC - %	
+!
+! ----------------
+!
+f_s_p=(1/dens_k-1/dens_0)*dens_wat*100		!fiber-saturation point - %
+!
+alp_r=3.6/100/f_s_p				!coef. of shrinkage	- %/%
+alp_t=8/100/f_s_p
+alp_l=0.5/100/f_s_p
+!
+k_a_v_t=alp_r_t+alp_t_t+alp_l_t-0.01*(alp_l_t*alp_l_t+alp_t_t*alp_r_t+alp_l_t*alp_r_t)			!volume shrinkage - total - %
+k_a_v=(alp_r_t+alp_t_t+alp_l_t-0.01*(alp_l_t*alp_l_t+alp_t_t*alp_r_t+alp_l_t*alp_r_t))/f_s_p		!coef. of volume shrinkage - %/%
+!
+mc_max=(f_s_p/100+1/(dens_0/1000)-1/(dens_subst/1000))*100	!max. MC - %
+!
+dens_12=dens_0*((1+0.12)/(1+k_a_v*0.12))			!density at 12 - kg/m3
+dens_fsp=dens_0*((1+f_s_p/100)/(1+k_a_v*f_s_p/100))		!density at FSP - kg/m3
+dens_max=dens_0*((1+mc_max/100)/(1+k_a_v*f_s_p/100))		!max. density (at max. MC) - kg/m3
+dens_red_6=dens_0/(1+k_a_v*6/100)				!density reduced at 6% MC - kg/m3
+dens_red_fsp=dens_0/(1+k_a_v*f_s_p/100)				!density reduced at FSP - kg/m3
+!
+trans_air=2e-5*dens_12			!2e-7*dens_12		!tranfer coeff. for 2nd order b.c. in air part - kg/(s*m2) (K=D*density, D=1.5e-7 - 8e-7 m/s),
+pot_emc_air=8							!potential EMC for 2nd order b.c.  in air part - %
+trans_h2o=0.01							!tranfer coeff. for 2nd order b.c. in water part - kg/(s*m2) 
+pot_emc_h2o=mc_max						!potential EMC for 2nd order b.c.  in air part - % (?? mc_max x 99.9 x 100)
+!
+!... density defined for all MC range by: dens_0 @0; dens_fsp @f_s_p; dens_max @mc_max
+!... shrink-swelling defined for all MC range in x,y,z by: alp_r @0; 0.95*alp_r @f_s_p-2; 0.05*alp_r @f_s_p+2; 0.001*alp_r @f_s_p+5; 0.0001*alp_r @mc_max
+!(?? THSX or ALPX)
+!(?? how to avoid going MC above mc_max - no condensation, thus defined by b.c.)
+!
+E_L_12=13000e6		!normal modulus of elasticity in L - Pa
+E_R_12=1300e6
+E_T_12=600e6
+!
+red_E_L=2		!reduction of modulus by MC - %/%  
+red_E_R=3
+red_E_T=4
+!
+G_LR_12=1000e6		!shear modulus of elasticity in LR - Pa
+G_LT_12=700e6
+G_RT_12=200e6
+!
+red_G_LR=3		!reduction of modulus by MC - %/%  
+red_G_LT=3
+red_G_RT=4
+!
+NU_LR_12=0.04		!minor Poisson ratios in LR - - 
+NU_LT_12=0.03
+NU_RT_12=0.4		!(?? no reduction by MC defined)
+!
+E_L_0=E_L_12+(12*red_E_L/100)*E_L_12		
+E_R_0=E_R_12+(12*red_E_R/100)*E_R_12
+E_T_0=E_T_12+(12*red_E_T/100)*E_T_12
+!
+E_L_fsp=E_L_12-((f_s_p-12)*red_E_L/100)*E_L_12	
+E_R_fsp=E_R_12-((f_s_p-12)*red_E_R/100)*E_R_12
+E_T_fsp=E_T_12-((f_s_p-12)*red_E_T/100)*E_T_12
+!
+G_LR_0=G_LR_12+(12*red_G_LR/100)*G_LR_12	
+G_LT_0=G_LT_12+(12*red_G_LT/100)*G_LT_12
+G_RT_0=G_RT_12+(12*red_G_RT/100)*G_RT_12
+!
+G_LR_fsp=G_LR_12-((f_s_p-12)*red_G_LR/100)*G_LR_12	
+G_LT_fsp=G_LT_12-((f_s_p-12)*red_G_LT/100)*G_LT_12
+G_RT_fsp=G_RT_12-((f_s_p-12)*red_G_RT/100)*G_RT_12
+!
+!... Elastic constants defined for all MC range by: E_L_0 @0; E_L_fsp @f_s_p; E_L_fsp @mc_max  (?? adding E_L_max=1.1*E_L_fsp  @mc_max-5)
+!
+!
+cap_mc=0.01*250   !DAMPING > as multiplier of MC capacity - kg/(kg*%) - change of mass of 1 kg to increase MC of 1%
+!
+D_L_0=50e-10		
+D_R_0=3e-10
+D_T_0=2e-10
+!
+D_L_6=41e-10
+D_R_6=2.5e-10
+D_T_6=2e-10
+!
+D_L_fsp=4e-10
+D_R_fsp=2e-10
+D_T_fsp=2e-10
+!
+K_L_0=D_L_0*dens_0		
+K_R_0=D_R_0*dens_0
+K_T_0=D_T_0*dens_0
+!
+K_L_6=D_L_6*dens_red_6
+K_R_6=D_R_6*dens_red_6
+K_T_6=D_T_6*dens_red_6
+!
+K_L_fsp=D_L_fsp*dens_red_fsp
+K_R_fsp=D_R_fsp*dens_red_fsp
+K_T_fsp=D_T_fsp*dens_red_fsp
+!
+!
+KT_L_fsp=30*K_L_fsp		!Total tranfer of water above FSP in L - kg/(s*m*%) (5-50 cm3/cm3/hour @0.1MPa, e.g 20 - 0.02/60/60]
+KT_R_fsp=KT_L_fsp/100		!Transfer in R and T 10**4 - 10**6 times lower
+KT_T_fsp=KT_L_fsp/100
+!
+!... MC conductivities defined for all MC range in x,y,z by: K_L_0 @0; K_L_6 @6; K_L_fsp @f_s_p; KT_L_fsp @mc_max
+!
+x_x=0.02
+y_y=0.02
+z_z=0.3
+!
+! ------------------------------------------
+!
+!
+/PREP7
+!  
+BLOCK,0,x_x,0,y_y,0,z_z, 
+!ET,1,SOLID5
+ET,1,SOLID225
+!
+!KEYOPT,1,1,0				!all dofs for SOLID5
+!KEYOPT,1,1,8				!temp only for SOLID5
+KEYOPT,1,1,11				!temp+u for SOLID225
+!KEYOPT,1,1,10				!temp only for SOLID225
+!
+ESIZE,0.004
+VSWEEP,ALL
+!
+!... Elastic constants defined for all MC range by: E_L_0 @0; E_L_fsp @f_s_p; E_L_fsp @mc_max  (?? adding E_L_max=1.1*E_L_fsp  @mc_max-5)
+!
+MPTEMP  
+MPTEMP,1,0  
+MPTEMP,2,f_s_p 
+MPTEMP,3,mc_max+5
+! 
+MPDATA,EX,1,,E_R_0 
+MPDATA,EX,1,,E_R_fsp 
+MPDATA,EX,1,,E_R_fsp 
+!
+MPDATA,EY,1,,E_T_0  
+MPDATA,EY,1,,E_T_fsp 
+MPDATA,EY,1,,E_T_fsp
+!
+MPDATA,EZ,1,,E_L_0
+MPDATA,EZ,1,,E_L_fsp
+MPDATA,EZ,1,,E_L_fsp
+! 
+MPDATA,NUXY,1,,NU_RT_12   
+MPDATA,NUXY,1,,NU_RT_12   
+MPDATA,NUXY,1,,NU_RT_12   
+!
+MPDATA,NUYZ,1,,NU_LT_12   
+MPDATA,NUYZ,1,,NU_LT_12   
+MPDATA,NUYZ,1,,NU_LT_12 
+!
+MPDATA,NUXZ,1,,NU_LR_12   
+MPDATA,NUXZ,1,,NU_LR_12   
+MPDATA,NUXZ,1,,NU_LR_12   
+!
+MPDATA,GXY,1,,G_RT_0
+MPDATA,GXY,1,,G_RT_fsp
+MPDATA,GXY,1,,G_RT_fsp
+!
+MPDATA,GYZ,1,,G_LT_0
+MPDATA,GYZ,1,,G_LT_fsp
+MPDATA,GYZ,1,,G_LT_fsp
+!
+MPDATA,GXZ,1,,G_LR_0
+MPDATA,GXZ,1,,G_LR_fsp
+MPDATA,GXZ,1,,G_LR_fsp
+!
+!
+MPTEMP
+MPTEMP,1,0  
+MPTEMP,2,f_s_p
+MPTEMP,3,mc_max+5 
+MPDATA,DENS,1,,dens_0 
+MPDATA,DENS,1,,dens_fsp
+MPDATA,DENS,1,,dens_max  
+!
+!
+MPTEMP  
+MPTEMP,1,0  
+MPTEMP,2,f_s_p
+MPTEMP,3,mc_max+5 
+UIMP,1,REFT,,,0
+!
+MPDATA,THSX,1,,0
+MPDATA,THSX,1,,alp_r*f_s_p
+MPDATA,THSX,1,,alp_r*f_s_p 
+!
+MPDATA,THSY,1,,0
+MPDATA,THSY,1,,alp_t*f_s_p
+MPDATA,THSY,1,,alp_r*f_s_p  
+!
+MPDATA,THSZ,1,,0 
+MPDATA,THSZ,1,,alp_l*f_s_p
+MPDATA,THSZ,1,,alp_r*f_s_p 
+!
+!
+MPTEMP
+MPTEMP,1,0  
+MPTEMP,2,6
+MPTEMP,3,f_s_p-1
+MPTEMP,4,f_s_p+1
+MPTEMP,5,mc_max+5
+!
+MPDATA,KXX,1,,K_R_0  
+MPDATA,KXX,1,,K_R_6
+MPDATA,KXX,1,,K_R_fsp
+MPDATA,KXX,1,,KT_R_fsp
+MPDATA,KXX,1,,0.8*KT_R_fsp  
+!
+MPDATA,KYY,1,,K_T_0   
+MPDATA,KYY,1,,K_T_6
+MPDATA,KYY,1,,K_T_fsp
+MPDATA,KYY,1,,KT_T_fsp
+MPDATA,KYY,1,,0.8*KT_T_fsp    
+!
+MPDATA,KZZ,1,,K_L_0
+MPDATA,KZZ,1,,K_L_6
+MPDATA,KZZ,1,,K_L_fsp
+MPDATA,KZZ,1,,KT_L_fsp  
+MPDATA,KZZ,1,,0.8*KT_L_fsp   
+!
+MP,C,1,cap_mc
+!
+asel,s,loc,z,0
+DA,ALL,TEMP,mc_max
+!SFA,ALL,1,CONV,trans_h2o,pot_emc_h2o
+DA,ALL,UZ,0
+!
+asel,inve
+!SFA,ALL,1,CONV,trans_air,pot_emc_air
+!
+asel,s,loc,x,0
+DA,ALL,UX,0
+!
+asel,s,loc,y,0
+DA,ALL,UY,0
+!
+nsel,s,loc,x,0
+nsel,r,loc,y,0
+nsel,r,loc,z,0
+D,ALL,UX,0,
+D,ALL,UY,0,  
+D,ALL,UZ,0,    
+!
+allsel,all
+IC,ALL,TEMP,i_c_w,
+!
+/VIEW,1,1,1,1   
+/ANG,1  
+/REP,FAST   
+/AUTO,1 
+/REP,FAST 
+!
+FINISH
+/SOLU
+ANTYPE,4
+TRNOPT,FULL 
+KBC,1			!ramped 0, stepped 1  
+AUTOTS,1		!automatic time stepping 1
+LUMPM,0 
+nlgeom,on		!off when only temp is dof 
+!
+!
+!
+ti_me=150000		!total time of analysis --------------------------------
+n_subst=1000		!number of steps
+!
+!
+NSUBST,n_subst,n_subst,n_subst
+OUTRES,ALL,ALL  
+TIME,ti_me   			!180*60*60 , 7.5*24*60*60
+SOLVE
+!
+FINISH
+/POST1
+SET,LAST
+PLNSOL,TEMP
+!
+node_cent=node(x_x/2,y_y/2,z_z/2)
+node_cent_bot=node(x_x/2,y_y/2,0)
+node_cent_top=node(x_x/2,y_y/2,z_z)
+node_cent_bot1=node(x_x/2,y_y/2,0.005)
+node_cent_top1=node(x_x/2,y_y/2,z_z-0.005)
+node_bott_corner=node(x_x,y_y,0)
+node_top_corner=node(x_x,y_y,z_z)
+!
+*get,num_nodes,node,,count
+*dim,temp_n,array,num_nodes
+*dim,temp_avg,array,n_subst
+*dim,times,array,n_subst
+*dim,delta_temp_avg,array,n_subst
+*dim,temp_avg_e,array,n_subst
+!
+set,first
+*do,j,1,n_subst
+ node_next=0
+ sum_temp=0
+ *do,i,1,num_nodes
+  node_next=ndnext(node_next)
+  *get,temp_n(i),node,node_next,temp
+  sum_temp=sum_temp+temp_n(i)	
+ *enddo
+ temp_avg(j)=sum_temp/num_nodes
+ temp_avg_e(j)=temp_avg(j)/10000
+ delta_temp_avg(j)=temp_avg(j)-i_c_w
+ *get,times(j),active,0,set,time
+ set,next
+*enddo
+!
+FINISH
+/POST26
+SAVE 
+FILE,'file','rst','.'   
+!
+/UI,COLL,1  
+NUMVAR,200
+SOLU,191,NCMIT  
+STORE,MERGE  
+FILLDATA,191,,,,1,1 
+REALVAR,191,191 
+!
+vput,temp_avg,22,ti_me/n_subst,,avg_MC
+vput,temp_avg_e,33,ti_me/n_subst,,avg_MC_e4
+!
+NSOL,2,node_cent,TEMP,,center,  
+STORE,MERGE 
+!
+NSOL,3,node_cent_bot,TEMP,,bottom,  
+STORE,MERGE 
+! 
+NSOL,4,node_cent_bot1,TEMP,,bott+5mm,  
+STORE,MERGE 
+! 
+NSOL,5,node_cent_top,TEMP,,top,  
+STORE,MERGE 
+!
+NSOL,6,node_cent_top1,TEMP,,top-5mm,  
+STORE,MERGE 
+!
+NSOL,7,node_bott_corner,UX,,ux:bott,  
+STORE,MERGE 
+!
+NSOL,8,node_bott_corner,UY,,uy:bott,  
+STORE,MERGE 
+!
+NSOL,9,node_top_corner,UZ,,uz:top,  
+STORE,MERGE
+!
+XVAR,1  
+PLVAR,2,3,4,5,6,22
+!
+/SHOW,PNG,,0
+PNGR,COMP,1,-1  
+PNGR,ORIENT,HORIZ   
+PNGR,COLOR,2
+PNGR,TMOD,1 
+/GFILE,1200, 
+/CMAP,_TEMPCMAP_,CMP,,SAVE  
+/RGB,INDEX,100,100,100,0
+/RGB,INDEX,0,0,0,15 
+/REPLOT 
+/CMAP,_TEMPCMAP_,CMP
+/DELETE,_TEMPCMAP_,CMP  
+/SHOW,CLOSE 
+/DEVICE,VECTOR,0
+!
+/wait,2
+XVAR,1  
+PLVAR,7,8,9,33
+!
+/SHOW,PNG,,0
+PNGR,COMP,1,-1  
+PNGR,ORIENT,HORIZ   
+PNGR,COLOR,2
+PNGR,TMOD,1 
+/GFILE,1200, 
+/CMAP,_TEMPCMAP_,CMP,,SAVE  
+/RGB,INDEX,100,100,100,0
+/RGB,INDEX,0,0,0,15 
+/REPLOT 
+/CMAP,_TEMPCMAP_,CMP
+/DELETE,_TEMPCMAP_,CMP  
+/SHOW,CLOSE 
+/DEVICE,VECTOR,0
+!
+*cfopen,time__vs__avg_mc,txt
+ !*vwrite
+ !%C time[s], MC_avg[%], delta_MC_avg[%]  
+ *vwrite,times(1),temp_avg(1),delta_temp_avg(1)
+ %G, %G, %G
+*cfclos
+!
+/eof
