@@ -6,4 +6,4 @@
 Structure contains
 1) Comsol files with mositure analysis of wood samples and CLT pannels, included diffusion and free water movement
 2) Ansys Mechanical APDL macros for mechanical-moisture analysis of wood samples, included diffusion and free water movement
-3) Results of experiments for free water uptake on wood samples and CLT pannels, together with scirpts for data processing
+3) Results of experiments for free water uptake on wood samples and CLT pannels, together with scripts for data processing
